@@ -9,7 +9,7 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "REPLACE_WITH_YOUR_PROJECT_ID-tfstate"
+    bucket = "trading-app-nguyee-tfstate"
     prefix = "trading-app/state"
   }
 }
