@@ -72,6 +72,7 @@ public class AlpacaWebSocketGateway extends TextWebSocketHandler implements Mark
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
+        this.session = session;
         log.info("Alpaca WebSocket connected — authenticating");
         sendJson(Map.of("action", "auth", "key", apiKey, "secret", apiSecret));
     }
