@@ -5,6 +5,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.trading.core.domain.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ class AlpacaOrderGatewayTest {
     void setUp(WireMockRuntimeInfo wm) {
         RestClient client = RestClient.builder()
                 .baseUrl(wm.getHttpBaseUrl())
+                .requestFactory(new SimpleClientHttpRequestFactory())
                 .build();
         gateway = new AlpacaOrderGateway(client);
     }
