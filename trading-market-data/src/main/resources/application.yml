@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: trading-market-data
+
+alpaca:
+  ws-url: wss://stream.data.alpaca.markets/v2/iex

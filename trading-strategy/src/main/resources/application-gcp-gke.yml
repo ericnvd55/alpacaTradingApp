@@ -1,0 +1,6 @@
+gcp:
+  project-id: ${GCP_PROJECT_ID}
+
+alpaca:
+  base-url: https://paper-api.alpaca.markets
+  ws-url: wss://stream.data.alpaca.markets/v2/iex
