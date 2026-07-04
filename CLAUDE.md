@@ -25,7 +25,7 @@ Moving average crossover strategy. Paper trading during development.
 - Java 21 (Eclipse Temurin)
 - Spring Boot 3.3.x
 - Maven multi-module
-- GCP project: YOUR_PROJECT_ID, region: us-central1
+- GCP project: trading-app-nguyee, region: us-central1
 - GKE cluster: trading-cluster
 - Paper trading: SPRING_PROFILES_ACTIVE=gcp-gke,paper
 
@@ -38,6 +38,9 @@ Moving average crossover strategy. Paper trading during development.
 ## Current status
 [Update this as you progress through phases]
 Phase 1 complete. Phase 2 in progress — domain model done, JPA implementations pending.
+GCP infra (VPC, GKE Autopilot, Postgres VM, Artifact Registry, Secret Manager, Workload Identity
+Federation, Cloud Scheduler) provisioned via Terraform against trading-app-nguyee. CI → GKE deploy
+pipeline is green end-to-end: trading-strategy Helm chart deployed and running (1/1) on trading-cluster.
 
 ## Do not touch
 - Never commit .env files or service account keys
