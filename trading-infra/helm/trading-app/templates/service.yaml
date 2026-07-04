@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-strategy
+spec:
+  selector:
+    app: trading-strategy
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}

@@ -61,6 +61,7 @@ jobs:
       - name: Deploy with Helm
         run: |
           helm upgrade --install trading-app ./trading-infra/helm/trading-app \
+            --namespace default \
             --set image.repository=${{ env.IMAGE }} \
             --set image.tag=${{ github.sha }} \
             --set env.GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }} \
