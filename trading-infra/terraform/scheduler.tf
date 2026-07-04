@@ -14,6 +14,41 @@ locals {
   k8s_scale_path = "/apis/apps/v1/namespaces/default/deployments/trading-strategy/scale"
 }
 
+# Grants the scheduler's Google identity permission to patch the deployment's
+# scale subresource. GKE's built-in authenticator maps a Google-issued OIDC
+# token's email claim to this Kubernetes "User" subject.
+resource "kubernetes_role" "scheduler_scale" {
+  metadata {
+    name      = "trading-scheduler-scale"
+    namespace = "default"
+  }
+
+  rule {
+    api_groups = ["apps"]
+    resources  = ["deployments/scale"]
+    verbs      = ["get", "patch", "update"]
+  }
+}
+
+resource "kubernetes_role_binding" "scheduler_scale" {
+  metadata {
+    name      = "trading-scheduler-scale"
+    namespace = "default"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = kubernetes_role.scheduler_scale.metadata[0].name
+  }
+
+  subject {
+    kind      = "User"
+    name      = google_service_account.scheduler.email
+    api_group = "rbac.authorization.k8s.io"
+  }
+}
+
 # Scale to 0 after market close — 9 PM UTC (5 PM ET), Mon–Fri
 resource "google_cloud_scheduler_job" "scale_down" {
   name             = "trading-scale-down"
@@ -31,13 +66,12 @@ resource "google_cloud_scheduler_job" "scale_down" {
       "Content-Type" = "application/merge-patch+json"
     }
 
-    oauth_token {
+    oidc_token {
       service_account_email = google_service_account.scheduler.email
-      scope                 = "https://www.googleapis.com/auth/cloud-platform"
     }
   }
 
-  depends_on = [google_project_service.apis, google_container_cluster.trading]
+  depends_on = [google_project_service.apis, google_container_cluster.trading, kubernetes_role_binding.scheduler_scale]
 }
 
 # Scale to 1 before market open — 1 PM UTC (9 AM ET), Mon–Fri
@@ -57,11 +91,10 @@ resource "google_cloud_scheduler_job" "scale_up" {
       "Content-Type" = "application/merge-patch+json"
     }
 
-    oauth_token {
+    oidc_token {
       service_account_email = google_service_account.scheduler.email
-      scope                 = "https://www.googleapis.com/auth/cloud-platform"
     }
   }
 
-  depends_on = [google_project_service.apis, google_container_cluster.trading]
+  depends_on = [google_project_service.apis, google_container_cluster.trading, kubernetes_role_binding.scheduler_scale]
 }
