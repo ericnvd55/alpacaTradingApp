@@ -1,0 +1,47 @@
+name: Scale Trading App On
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scale-on:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write   # required for Workload Identity Federation
+
+    env:
+      REGION: us-central1
+      CLUSTER: trading-cluster
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Pause the market-hours schedule
+        working-directory: trading-infra/terraform
+        run: |
+          terraform init -input=false
+          terraform apply -input=false -auto-approve \
+            -target=google_cloud_scheduler_job.scale_up \
+            -target=google_cloud_scheduler_job.scale_down \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="scheduler_paused=true"
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER }}
+          location: ${{ env.REGION }}
+
+      - name: Scale trading-strategy to 1 replica
+        run: kubectl scale deployment/trading-strategy --replicas=1 -n default

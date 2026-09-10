@@ -26,3 +26,9 @@ variable "github_repo" {
   type        = string
   default     = "ericnvd55/alpacaTradingApp"
 }
+
+variable "scheduler_paused" {
+  description = "Whether the Mon-Fri 9am-5pm ET scale-up/scale-down Cloud Scheduler jobs are paused. Defaults to paused (app off by default); set false only via the 'Enable Market-Hours Schedule' workflow."
+  type        = bool
+  default     = true
+}

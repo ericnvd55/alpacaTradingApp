@@ -46,6 +46,22 @@ resource "google_project_iam_member" "deploy_gke_developer" {
   member  = "serviceAccount:${google_service_account.github_deploy.email}"
 }
 
+# Lets the scale-on/scale-off/schedule-on GitHub Actions workflows pause and
+# resume the market-hours Cloud Scheduler jobs (scheduler.tf) on demand.
+resource "google_project_iam_member" "deploy_scheduler_admin" {
+  project = var.project_id
+  role    = "roles/cloudscheduler.admin"
+  member  = "serviceAccount:${google_service_account.github_deploy.email}"
+}
+
+# Those same workflows run a narrowly `-target`ed `terraform apply` to flip
+# var.scheduler_paused, which needs read/write access to the GCS state backend.
+resource "google_storage_bucket_iam_member" "deploy_tfstate_access" {
+  bucket = "trading-app-nguyee-tfstate"
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.github_deploy.email}"
+}
+
 # ── Service account for trading app pods (Workload Identity) ───────────────
 resource "google_service_account" "trading_app" {
   account_id   = "trading-app"

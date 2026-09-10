@@ -49,6 +49,12 @@ resource "kubernetes_role_binding" "scheduler_scale" {
   }
 }
 
+# var.scheduler_paused (default true) keeps these jobs paused unless the
+# "Enable Market-Hours Schedule" GitHub Actions workflow applies with
+# scheduler_paused=false. The "Scale Trading App On/Off" workflows apply with
+# scheduler_paused=true so manual control and the schedule stay mutually
+# exclusive. See .github/workflows/scale-on.yml, scale-off.yml, schedule-on.yml.
+
 # Scale to 0 after market close — 9 PM UTC (5 PM ET), Mon–Fri
 resource "google_cloud_scheduler_job" "scale_down" {
   name             = "trading-scale-down"
@@ -56,6 +62,7 @@ resource "google_cloud_scheduler_job" "scale_down" {
   schedule         = "0 21 * * 1-5"
   time_zone        = "UTC"
   attempt_deadline = "30s"
+  paused           = var.scheduler_paused
 
   http_target {
     uri         = "https://${google_container_cluster.trading.endpoint}${local.k8s_scale_path}"
@@ -81,6 +88,7 @@ resource "google_cloud_scheduler_job" "scale_up" {
   schedule         = "0 13 * * 1-5"
   time_zone        = "UTC"
   attempt_deadline = "30s"
+  paused           = var.scheduler_paused
 
   http_target {
     uri         = "https://${google_container_cluster.trading.endpoint}${local.k8s_scale_path}"

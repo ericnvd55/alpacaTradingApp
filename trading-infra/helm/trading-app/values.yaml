@@ -1,4 +1,8 @@
-replicaCount: 1
+# Off by default — every `helm upgrade --install` (including the CI deploy
+# pipeline) resets to 0 replicas. Use the "Scale Trading App On/Off" or
+# "Enable Market-Hours Schedule" GitHub Actions workflows to change this at
+# runtime without needing a new deploy.
+replicaCount: 0
 
 image:
   repository: ""
