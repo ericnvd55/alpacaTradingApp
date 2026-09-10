@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1360" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9a9a9a"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1900" height="1360" fill="#030303"/>
+
+  <text x="950" y="48" fill="#9aa0a6" font-size="30" font-weight="700" text-anchor="middle">GCP GKE Autopilot — single-pod REST + WebSocket order plane</text>
+
+  <!-- ===================== CONNECTORS (drawn first, tucked behind boxes) ===================== -->
+  <g stroke="#8a8a8a" fill="none" stroke-width="2.5">
+    <!-- Alpaca -> pod -->
+    <path d="M420,180 L420,260 Q420,300 500,320" marker-end="url(#arrow)"/>
+    <path d="M1480,180 L1480,260 Q1480,300 1400,320" marker-end="url(#arrow)"/>
+
+    <!-- CI -> Deploy -->
+    <path d="M430,1140 L450,1140" marker-end="url(#arrow)"/>
+
+    <!-- Deploy -> pod (helm upgrade) -->
+    <path d="M610,1070 L610,745 L610,510" marker-end="url(#arrow)"/>
+    <!-- Deploy -> Artifact Registry (push image) -->
+    <path d="M560,1070 Q400,900 295,740" marker-end="url(#arrow)"/>
+
+    <!-- ScaleOn -> pod -->
+    <path d="M950,1070 L950,510" marker-end="url(#arrow)"/>
+    <!-- ScaleOff -> pod -->
+    <path d="M1290,1070 Q1150,800 1000,510" marker-end="url(#arrow)"/>
+
+    <!-- Schedule -> Cloud Scheduler -->
+    <path d="M1630,1070 L1525,740" marker-end="url(#arrow)"/>
+    <!-- Cloud Scheduler -> pod -->
+    <path d="M1450,590 Q1250,480 1100,510" marker-end="url(#arrow)"/>
+
+    <!-- Secret Manager -> pod -->
+    <path d="M705,590 L700,510" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- dashed connectors: auth / secrets / planned -->
+  <g stroke="#8a8a8a" fill="none" stroke-width="2" stroke-dasharray="7,6">
+    <path d="M1050,740 L610,1070" marker-end="url(#arrow)"/>
+    <path d="M1115,740 L950,1070" marker-end="url(#arrow)"/>
+    <path d="M1150,740 L1290,1070" marker-end="url(#arrow)"/>
+    <path d="M1250,740 L1630,1070" marker-end="url(#arrow)"/>
+    <path d="M950,510 L950,780" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- connector labels -->
+  <g fill="#b7bcc2" font-size="16">
+    <text x="330" y="245" text-anchor="middle">orders</text>
+    <text x="1560" y="245" text-anchor="middle">bars / quotes</text>
+    <text x="440" y="1125" text-anchor="middle" font-size="14">on success</text>
+    <text x="700" y="850" text-anchor="middle">helm upgrade,</text>
+    <text x="700" y="870" text-anchor="middle">replicaCount=0</text>
+    <text x="380" y="900" text-anchor="middle">push</text>
+    <text x="380" y="920" text-anchor="middle">image</text>
+    <text x="990" y="850" text-anchor="middle">kubectl scale</text>
+    <text x="990" y="870" text-anchor="middle">--replicas=1</text>
+    <text x="1230" y="900" text-anchor="middle">kubectl scale</text>
+    <text x="1230" y="920" text-anchor="middle">--replicas=0</text>
+    <text x="1660" y="900" text-anchor="middle">resume jobs</text>
+    <text x="1330" y="660" text-anchor="middle">patch</text>
+    <text x="1330" y="680" text-anchor="middle">deployment/scale</text>
+    <text x="800" y="650" text-anchor="middle" font-size="14">secrets</text>
+    <text x="1060" y="960" text-anchor="middle" font-size="14">auth (WIF)</text>
+    <text x="1000" y="650" text-anchor="middle" font-size="14">planned —</text>
+    <text x="1000" y="668" text-anchor="middle" font-size="14">not yet wired</text>
+  </g>
+
+  <!-- ===================== CONTAINERS ===================== -->
+  <g fill="none" stroke="#5a5f66" stroke-width="1.5" stroke-dasharray="8,6">
+    <rect x="40" y="250" width="1820" height="720" rx="18"/>
+    <rect x="280" y="300" width="1340" height="230" rx="14"/>
+    <rect x="40" y="1010" width="1820" height="230" rx="18"/>
+  </g>
+  <g fill="#8a8f98" font-size="19" font-weight="600">
+    <text x="60" y="280">Google Cloud Platform — project trading-app-nguyee (us-central1)</text>
+    <text x="300" y="325">GKE Autopilot cluster — trading-cluster</text>
+    <text x="60" y="1040">GitHub Actions</text>
+  </g>
+
+  <!-- ===================== BOXES ===================== -->
+
+  <!-- Alpaca (green) -->
+  <g>
+    <rect x="140" y="90" width="560" height="90" rx="14" fill="#d7f0d7" stroke="#3d8a4c" stroke-width="2"/>
+    <text x="420" y="128" text-anchor="middle" font-size="22" font-weight="700" fill="#1f6b2b">Alpaca REST API</text>
+    <text x="420" y="154" text-anchor="middle" font-size="16" fill="#2f7a3b">POST /v2/orders</text>
+
+    <rect x="1200" y="90" width="560" height="90" rx="14" fill="#d7f0d7" stroke="#3d8a4c" stroke-width="2"/>
+    <text x="1480" y="128" text-anchor="middle" font-size="22" font-weight="700" fill="#1f6b2b">Alpaca Market Data</text>
+    <text x="1480" y="154" text-anchor="middle" font-size="16" fill="#2f7a3b">wss://stream.data.alpaca.markets</text>
+  </g>
+
+  <!-- trading-strategy pod (salmon) -->
+  <g>
+    <rect x="300" y="320" width="1300" height="190" rx="16" fill="#fbdad0" stroke="#b8552f" stroke-width="2.5"/>
+    <text x="950" y="360" text-anchor="middle" font-size="24" font-weight="700" fill="#9c3a1a">trading-strategy pod (Spring Boot)</text>
+    <text x="950" y="392" text-anchor="middle" font-size="16" fill="#a8452a">MA crossover strategy — not yet written</text>
+    <text x="950" y="418" text-anchor="middle" font-size="16" fill="#a8452a">REST OrderGateway → Alpaca orders (write-ahead client_order_id)</text>
+    <text x="950" y="444" text-anchor="middle" font-size="16" fill="#a8452a">WebSocket MarketDataGateway → Alpaca bars/quotes</text>
+    <text x="950" y="480" text-anchor="middle" font-size="15" fill="#7a3320" font-style="italic">Off by default · runs Mon–Fri 9am–5pm ET via Cloud Scheduler</text>
+  </g>
+
+  <!-- GCP services (cream) -->
+  <g>
+    <rect x="110" y="590" width="370" height="150" rx="14" fill="#efe9da" stroke="#8a6f3f" stroke-width="2"/>
+    <text x="295" y="628" text-anchor="middle" font-size="19" font-weight="700" fill="#5c4a2e">Artifact Registry</text>
+    <text x="295" y="654" text-anchor="middle" font-size="15" fill="#6b5a3d">trading-strategy Docker images</text>
+
+    <rect x="520" y="590" width="370" height="150" rx="14" fill="#efe9da" stroke="#8a6f3f" stroke-width="2"/>
+    <text x="705" y="628" text-anchor="middle" font-size="19" font-weight="700" fill="#5c4a2e">Secret Manager</text>
+    <text x="705" y="654" text-anchor="middle" font-size="15" fill="#6b5a3d">Alpaca API keys</text>
+
+    <rect x="930" y="590" width="370" height="150" rx="14" fill="#efe9da" stroke="#8a6f3f" stroke-width="2"/>
+    <text x="1115" y="628" text-anchor="middle" font-size="19" font-weight="700" fill="#5c4a2e">Workload Identity</text>
+    <text x="1115" y="652" text-anchor="middle" font-size="19" font-weight="700" fill="#5c4a2e">Federation</text>
+    <text x="1115" y="678" text-anchor="middle" font-size="15" fill="#6b5a3d">keyless GitHub Actions auth</text>
+
+    <rect x="1340" y="590" width="370" height="150" rx="14" fill="#efe9da" stroke="#8a6f3f" stroke-width="2"/>
+    <text x="1525" y="628" text-anchor="middle" font-size="19" font-weight="700" fill="#5c4a2e">Cloud Scheduler</text>
+    <text x="1525" y="654" text-anchor="middle" font-size="14" fill="#6b5a3d">scale-up 9am ET / scale-down 5pm ET</text>
+    <text x="1525" y="674" text-anchor="middle" font-size="14" fill="#6b5a3d">Mon–Fri · paused by default</text>
+  </g>
+
+  <!-- trading-db VM (purple, storage) -->
+  <g>
+    <rect x="620" y="780" width="660" height="150" rx="14" fill="#e2dbf5" stroke="#5c3fa8" stroke-width="2"/>
+    <text x="950" y="818" text-anchor="middle" font-size="19" font-weight="700" fill="#402d7a">trading-db VM (e2-micro, always-free tier)</text>
+    <text x="950" y="844" text-anchor="middle" font-size="15" fill="#4a3785">PostgreSQL + PgBouncer</text>
+    <text x="950" y="866" text-anchor="middle" font-size="15" fill="#7a2d2d">⚠ not installed — no internet egress path (deferred)</text>
+  </g>
+
+  <!-- GitHub Actions (blue) -->
+  <g>
+    <rect x="110" y="1070" width="320" height="140" rx="14" fill="#d7e6fb" stroke="#2f5f9c" stroke-width="2"/>
+    <text x="270" y="1108" text-anchor="middle" font-size="18" font-weight="700" fill="#1a4a8c">CI workflow</text>
+    <text x="270" y="1132" text-anchor="middle" font-size="14" fill="#2a5a9c">build + test, on push</text>
+
+    <rect x="450" y="1070" width="320" height="140" rx="14" fill="#d7e6fb" stroke="#2f5f9c" stroke-width="2"/>
+    <text x="610" y="1108" text-anchor="middle" font-size="18" font-weight="700" fill="#1a4a8c">Deploy workflow</text>
+    <text x="610" y="1132" text-anchor="middle" font-size="14" fill="#2a5a9c">auto, on CI success</text>
+
+    <rect x="790" y="1070" width="320" height="140" rx="14" fill="#d7e6fb" stroke="#2f5f9c" stroke-width="2"/>
+    <text x="950" y="1108" text-anchor="middle" font-size="18" font-weight="700" fill="#1a4a8c">Scale Trading App On</text>
+    <text x="950" y="1132" text-anchor="middle" font-size="14" fill="#2a5a9c">manual (workflow_dispatch)</text>
+
+    <rect x="1130" y="1070" width="320" height="140" rx="14" fill="#d7e6fb" stroke="#2f5f9c" stroke-width="2"/>
+    <text x="1290" y="1108" text-anchor="middle" font-size="18" font-weight="700" fill="#1a4a8c">Scale Trading App Off</text>
+    <text x="1290" y="1132" text-anchor="middle" font-size="14" fill="#2a5a9c">manual (workflow_dispatch)</text>
+
+    <rect x="1470" y="1070" width="320" height="140" rx="14" fill="#d7e6fb" stroke="#2f5f9c" stroke-width="2"/>
+    <text x="1630" y="1100" text-anchor="middle" font-size="17" font-weight="700" fill="#1a4a8c">Enable Market-Hours</text>
+    <text x="1630" y="1120" text-anchor="middle" font-size="17" font-weight="700" fill="#1a4a8c">Schedule</text>
+    <text x="1630" y="1142" text-anchor="middle" font-size="14" fill="#2a5a9c">manual (workflow_dispatch)</text>
+  </g>
+
+  <!-- ===================== LEGEND ===================== -->
+  <g font-size="16" fill="#c7ccd2">
+    <rect x="110" y="1290" width="22" height="22" rx="4" fill="#fbdad0" stroke="#b8552f"/>
+    <text x="142" y="1307">Scheduled pod (Mon–Fri, off by default)</text>
+
+    <rect x="500" y="1290" width="22" height="22" rx="4" fill="#efe9da" stroke="#8a6f3f"/>
+    <text x="532" y="1307">GCP managed service</text>
+
+    <rect x="800" y="1290" width="22" height="22" rx="4" fill="#e2dbf5" stroke="#5c3fa8"/>
+    <text x="832" y="1307">Storage (currently non-functional)</text>
+
+    <rect x="1140" y="1290" width="22" height="22" rx="4" fill="#d7f0d7" stroke="#3d8a4c"/>
+    <text x="1172" y="1307">Alpaca (external)</text>
+
+    <rect x="1400" y="1290" width="22" height="22" rx="4" fill="#d7e6fb" stroke="#2f5f9c"/>
+    <text x="1432" y="1307">GitHub Actions (CI/CD)</text>
+  </g>
+</svg>

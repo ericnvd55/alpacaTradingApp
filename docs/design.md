@@ -34,55 +34,7 @@ of running (and billing) 24/7.
 
 ### Current architecture
 
-```mermaid
-flowchart TB
-    subgraph GH["GitHub"]
-        CI["CI workflow<br/>(build + test)"]
-        Deploy["Deploy workflow<br/>(auto, on CI success)"]
-        ScaleOn["Scale On workflow<br/>(manual)"]
-        ScaleOff["Scale Off workflow<br/>(manual)"]
-        Schedule["Enable Schedule workflow<br/>(manual)"]
-    end
-
-    subgraph GCP["GCP project: trading-app-nguyee (us-central1)"]
-        AR["Artifact Registry<br/>(container images)"]
-        SM["Secret Manager<br/>(Alpaca API keys)"]
-        WIF["Workload Identity Federation<br/>(keyless GitHub Actions auth)"]
-
-        subgraph VPC["trading-vpc (10.0.0.0/24)"]
-            subgraph GKE["GKE Autopilot: trading-cluster"]
-                Pod["trading-strategy pod<br/>(Spring Boot)"]
-            end
-            PG["trading-db VM (e2-micro)<br/>Postgres + PgBouncer<br/>⚠ not yet functional"]
-        end
-
-        Sched["Cloud Scheduler<br/>scale-up (9am ET) / scale-down (5pm ET)<br/>Mon–Fri, paused by default"]
-    end
-
-    subgraph Alpaca["Alpaca Markets"]
-        RESTApi["REST API<br/>(order execution)"]
-        WSApi["WebSocket API<br/>(market data)"]
-    end
-
-    CI --> Deploy
-    Deploy -->|helm upgrade, replicaCount=0| GKE
-    Deploy --> AR
-    AR --> Pod
-    WIF -.auth.-> Deploy
-    WIF -.auth.-> ScaleOn
-    WIF -.auth.-> ScaleOff
-    WIF -.auth.-> Schedule
-
-    ScaleOn -->|kubectl scale --replicas=1| Pod
-    ScaleOff -->|kubectl scale --replicas=0| Pod
-    Schedule -->|resume jobs| Sched
-    Sched -->|patch deployment/scale| Pod
-
-    SM -.secrets.-> Pod
-    Pod <-->|orders| RESTApi
-    Pod <-->|bars/quotes| WSApi
-    Pod -.planned.-> PG
-```
+![Current architecture: single trading-strategy pod on GKE Autopilot, scheduled on/off via Cloud Scheduler and GitHub Actions](images/current-architecture.svg)
 
 ### Component breakdown
 
@@ -144,6 +96,38 @@ give explicit on/off/schedule control independent of deploys.
   Memorystore, which was dropped from this revision specifically to avoid
   its always-on, non-free-tier cost) plus **Cloud Storage** for FIX-log/
   backup archival.
+
+**Pub/Sub design:**
+
+| Topic | Messages | Publisher | Subscribers |
+|---|---|---|---|
+| `order-events` | `order.filled`, `order.cancelled` | Merged pod, after Alpaca confirms via the order-update WS stream | Order state, Portfolio, Risk, Notify |
+| `market-data` | `market.trade`, `market.bar` | Merged pod's market data gateway, after receiving from Alpaca's market-data WS | Bar store (and Strategy engine, in-process, without going through Pub/Sub) |
+
+- **Subscription type: pull, not push.** Consumer pods scale to zero, so
+  there's no always-reachable HTTP endpoint for Pub/Sub to push to. Pull
+  subscriptions let a consumer drain its backlog on its own schedule once
+  Cloud Scheduler brings it back up.
+- **Delivery is at-least-once**, so every consumer must be idempotent —
+  upsert by `order.id`/`client_order_id` or `(symbol, timestamp)`, never a
+  blind insert. Pub/Sub can and will redeliver.
+- **Ordering keys**: per-`symbol` for market data, per-`client_order_id`
+  for order events. Global ordering isn't needed (and Pub/Sub doesn't give
+  it by default), but a cancel must never be processed before its fill for
+  the *same* order — ordering keys scope that guarantee to where it
+  actually matters.
+- **Retention**: default 7-day message retention acts as a safety net if a
+  consumer stays scaled-to-zero longer than expected (a long weekend, a
+  holiday) — no data loss, just delayed processing on the next scale-up.
+  Ack deadline should be sized for Autopilot's pod cold-start time
+  (10–30s) to avoid premature redelivery while a consumer is still booting.
+- **Dead-letter topics** per subscription after ~5 delivery attempts, so a
+  poison message (e.g. a malformed bar) can't loop a consumer through
+  redelivery indefinitely.
+- **Fan-out is the actual point of Pub/Sub here**: Order state, Portfolio,
+  Risk, and Notify all subscribe to `order-events` independently — each
+  gets its own copy, so adding a consumer never means touching the
+  publisher or the other consumers.
 
 **Merged vs. split pod (Strategy engine + Market data gateway + REST API):**
 
