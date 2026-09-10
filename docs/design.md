@@ -32,7 +32,7 @@ of running (and billing) 24/7.
 
 ## 2. Architecture
 
-### System diagram
+### Current architecture
 
 ```mermaid
 flowchart TB
@@ -106,6 +106,53 @@ The **off-by-default + scheduler** design (covered in detail earlier this
 session) means the pod normally runs only Mon–Fri 9am–5pm ET; a code deploy
 always resets it to 0 replicas, and three manual GitHub Actions workflows
 give explicit on/off/schedule control independent of deploys.
+
+### Target architecture
+
+> **Status: not yet built.** This is the intended end-state once the
+> strategy engine and event-driven consumers exist — described here for
+> planning purposes, not as a reflection of what's deployed today.
+
+![Target architecture: GKE Autopilot with Pub/Sub-decoupled strategy engine, market data gateway, and consumer pods](images/target-architecture.png)
+
+**What changes vs. the current architecture:**
+
+- The single `trading-strategy` pod splits into a **Strategy engine pod**
+  (MA crossover + order submission) and a dedicated **Market data gateway
+  pod** that holds Alpaca's one-per-account market-data WebSocket connection
+  and fans it out over Pub/Sub — avoiding a connection-limit problem if a
+  second strategy or consumer ever needs the same feed.
+- **Pub/Sub** (`order events`, `market data` topics) replaces direct
+  in-process calls, decoupling producers from consumers and buffering events
+  so a scaled-to-zero consumer doesn't lose fills/bars while it's off.
+- Five single-purpose **consumer pods** (Order state, Portfolio, Risk,
+  Notify, Bar store) replace the current all-in-one pod, each independently
+  deployable and scale-to-zero via Cloud Scheduler (no KEDA — kept out of
+  this revision since it isn't installed anywhere in this repo today).
+- A separate **REST API pod** isolates client-facing reads from the trading
+  write path.
+- Storage stays on the same free-tier `PostgreSQL on e2-micro` VM (now the
+  single source of truth for orders/fills/positions/bars — no Redis/
+  Memorystore, which was dropped from this revision specifically to avoid
+  its always-on, non-free-tier cost) plus **Cloud Storage** for FIX-log/
+  backup archival.
+
+**Tradeoffs to weigh before building this:**
+
+- Meaningfully more operational surface (8 pods + 2 Pub/Sub topics + mTLS)
+  than the current single pod — makes the still-unbuilt
+  `trading-observability` module load-bearing rather than optional.
+- Splitting Order state / Portfolio / Risk into separate consumers off the
+  same topic introduces eventual consistency between them — for
+  risk/exposure correctness this needs deliberate idempotency/ordering
+  design, not just "add Pub/Sub."
+- Not free: Pub/Sub plus three always-on pods (Strategy engine, Market data
+  gateway, REST API) move this off the ~$0 footprint the current
+  architecture and the rest of this project's infra (always-free e2-micro,
+  scale-to-zero GKE) have otherwise stuck to. Estimated ~$11–13/mo.
+- This event-driven shape is also the natural precursor to the FIX API
+  future-consideration noted below — if that migration happens, it would
+  build on this architecture rather than the current single-pod one.
 
 ## 3. Tech Stack
 
