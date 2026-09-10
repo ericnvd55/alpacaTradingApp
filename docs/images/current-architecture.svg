@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1900 1360" font-family="Segoe UI, Arial, sans-serif">
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#9a9a9a"/>
+      <path d="M0,0 L10,5 L0,10 z" fill="#6b6b6b"/>
     </marker>
   </defs>
 
-  <rect x="0" y="0" width="1900" height="1360" fill="#030303"/>
+  <rect x="0" y="0" width="1900" height="1360" fill="#ffffff"/>
 
-  <text x="950" y="48" fill="#9aa0a6" font-size="30" font-weight="700" text-anchor="middle">GCP GKE Autopilot — single-pod REST + WebSocket order plane</text>
+  <text x="950" y="48" fill="#2b2f33" font-size="30" font-weight="700" text-anchor="middle">GCP GKE Autopilot — single-pod REST + WebSocket order plane</text>
 
   <!-- ===================== CONNECTORS (drawn first, tucked behind boxes) ===================== -->
-  <g stroke="#8a8a8a" fill="none" stroke-width="2.5">
+  <g stroke="#6b6b6b" fill="none" stroke-width="2.5">
     <!-- Alpaca -> pod -->
     <path d="M420,180 L420,260 Q420,300 500,320" marker-end="url(#arrow)"/>
     <path d="M1480,180 L1480,260 Q1480,300 1400,320" marker-end="url(#arrow)"/>
@@ -38,7 +38,7 @@
   </g>
 
   <!-- dashed connectors: auth / secrets / planned -->
-  <g stroke="#8a8a8a" fill="none" stroke-width="2" stroke-dasharray="7,6">
+  <g stroke="#6b6b6b" fill="none" stroke-width="2" stroke-dasharray="7,6">
     <path d="M1050,740 L610,1070" marker-end="url(#arrow)"/>
     <path d="M1115,740 L950,1070" marker-end="url(#arrow)"/>
     <path d="M1150,740 L1290,1070" marker-end="url(#arrow)"/>
@@ -47,7 +47,7 @@
   </g>
 
   <!-- connector labels -->
-  <g fill="#b7bcc2" font-size="16">
+  <g fill="#44484d" font-size="16">
     <text x="330" y="245" text-anchor="middle">orders</text>
     <text x="1560" y="245" text-anchor="middle">bars / quotes</text>
     <text x="440" y="1125" text-anchor="middle" font-size="14">on success</text>
@@ -69,12 +69,12 @@
   </g>
 
   <!-- ===================== CONTAINERS ===================== -->
-  <g fill="none" stroke="#5a5f66" stroke-width="1.5" stroke-dasharray="8,6">
+  <g fill="none" stroke="#8a8f98" stroke-width="1.5" stroke-dasharray="8,6">
     <rect x="40" y="250" width="1820" height="720" rx="18"/>
     <rect x="280" y="300" width="1340" height="230" rx="14"/>
     <rect x="40" y="1010" width="1820" height="230" rx="18"/>
   </g>
-  <g fill="#8a8f98" font-size="19" font-weight="600">
+  <g fill="#4a4f57" font-size="19" font-weight="600">
     <text x="60" y="280">Google Cloud Platform — project trading-app-nguyee (us-central1)</text>
     <text x="300" y="325">GKE Autopilot cluster — trading-cluster</text>
     <text x="60" y="1040">GitHub Actions</text>
@@ -157,7 +157,7 @@
   </g>
 
   <!-- ===================== LEGEND ===================== -->
-  <g font-size="16" fill="#c7ccd2">
+  <g font-size="16" fill="#333338">
     <rect x="110" y="1290" width="22" height="22" rx="4" fill="#fbdad0" stroke="#b8552f"/>
     <text x="142" y="1307">Scheduled pod (Mon–Fri, off by default)</text>
 
