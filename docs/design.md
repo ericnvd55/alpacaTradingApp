@@ -115,41 +115,71 @@ give explicit on/off/schedule control independent of deploys.
 
 ![Target architecture: GKE Autopilot with Pub/Sub-decoupled strategy engine, market data gateway, and consumer pods](images/target-architecture.png)
 
+> **Diagram vs. recommended implementation:** the diagram shows Strategy
+> engine, Market data gateway, and REST API as three separate always-on
+> pods. In practice, **these three are merged into a single always-on pod**
+> (see below) — the Pub/Sub and consumer-pod decomposition on the right
+> side of the diagram is unaffected and still applies as drawn.
+
 **What changes vs. the current architecture:**
 
-- The single `trading-strategy` pod splits into a **Strategy engine pod**
-  (MA crossover + order submission) and a dedicated **Market data gateway
-  pod** that holds Alpaca's one-per-account market-data WebSocket connection
-  and fans it out over Pub/Sub — avoiding a connection-limit problem if a
-  second strategy or consumer ever needs the same feed.
+- The single `trading-strategy` pod is retained as **one always-on pod**
+  combining the strategy engine (MA crossover + order submission), the
+  market data gateway (Alpaca's one-per-account WebSocket connection,
+  publishing to Pub/Sub), and the client-facing REST read API — rather than
+  splitting these into three separate pods. See "Merged vs. split pod"
+  below for the reasoning.
 - **Pub/Sub** (`order events`, `market data` topics) replaces direct
-  in-process calls, decoupling producers from consumers and buffering events
-  so a scaled-to-zero consumer doesn't lose fills/bars while it's off.
+  in-process calls to the *consumer* pods, decoupling producers from
+  consumers and buffering events so a scaled-to-zero consumer doesn't lose
+  fills/bars while it's off. (Within the merged pod itself, strategy ↔
+  market-data signaling stays in-process, as it does today.)
 - Five single-purpose **consumer pods** (Order state, Portfolio, Risk,
-  Notify, Bar store) replace the current all-in-one pod, each independently
-  deployable and scale-to-zero via Cloud Scheduler (no KEDA — kept out of
-  this revision since it isn't installed anywhere in this repo today).
-- A separate **REST API pod** isolates client-facing reads from the trading
-  write path.
+  Notify, Bar store) replace the current all-in-one pod's implicit state,
+  each independently deployable and scale-to-zero via Cloud Scheduler (no
+  KEDA — kept out of this revision since it isn't installed anywhere in
+  this repo today).
 - Storage stays on the same free-tier `PostgreSQL on e2-micro` VM (now the
   single source of truth for orders/fills/positions/bars — no Redis/
   Memorystore, which was dropped from this revision specifically to avoid
   its always-on, non-free-tier cost) plus **Cloud Storage** for FIX-log/
   backup archival.
 
-**Tradeoffs to weigh before building this:**
+**Merged vs. split pod (Strategy engine + Market data gateway + REST API):**
 
-- Meaningfully more operational surface (8 pods + 2 Pub/Sub topics + mTLS)
+Merging these three into one pod is the recommended near-term choice:
+GKE Autopilot bills per-pod against a per-pod resource-request minimum, so
+three separate always-on pods each pay that floor independently — merging
+cuts the always-on compute cost to roughly a third to a quarter of the
+three-pod variant, which was the dominant cost driver in the ~$11–13/mo
+estimate below. It also mirrors what the current architecture already does
+successfully (strategy + market data already share one pod today).
+
+The tradeoff is blast radius and coupling: a bug in the read-API code could
+crash the process running live order submission and the market-data
+WebSocket, and a read-API deploy briefly interrupts trading/market-data
+too. At this project's current scale (solo, paper trading, no client UI
+yet) that risk is theoretical. **Split triggers** — revisit this decision
+if any of these become true: a real client UI drives meaningful read
+traffic that needs to scale independently, the app moves off paper trading
+onto live capital (where blast-radius isolation starts to matter), or the
+read API needs a release cadence independent of the trading engine.
+
+**Other tradeoffs to weigh before building this:**
+
+- Meaningfully more operational surface (6 pods + 2 Pub/Sub topics + mTLS)
   than the current single pod — makes the still-unbuilt
   `trading-observability` module load-bearing rather than optional.
 - Splitting Order state / Portfolio / Risk into separate consumers off the
   same topic introduces eventual consistency between them — for
   risk/exposure correctness this needs deliberate idempotency/ordering
   design, not just "add Pub/Sub."
-- Not free: Pub/Sub plus three always-on pods (Strategy engine, Market data
-  gateway, REST API) move this off the ~$0 footprint the current
-  architecture and the rest of this project's infra (always-free e2-micro,
-  scale-to-zero GKE) have otherwise stuck to. Estimated ~$11–13/mo.
+- Not free: Pub/Sub plus the merged always-on pod move this off the ~$0
+  footprint the current architecture and the rest of this project's infra
+  (always-free e2-micro, scale-to-zero GKE) have otherwise stuck to. The
+  diagram's ~$11–13/mo estimate assumes three separate always-on pods;
+  merging them lowers that further, though by how much needs a proper
+  Autopilot pricing pass before committing to a number.
 - This event-driven shape is also the natural precursor to the FIX API
   future-consideration noted below — if that migration happens, it would
   build on this architecture rather than the current single-pod one.
