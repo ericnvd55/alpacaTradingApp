@@ -174,15 +174,60 @@ read API needs a release cadence independent of the trading engine.
   same topic introduces eventual consistency between them — for
   risk/exposure correctness this needs deliberate idempotency/ordering
   design, not just "add Pub/Sub."
-- Not free: Pub/Sub plus the merged always-on pod move this off the ~$0
-  footprint the current architecture and the rest of this project's infra
-  (always-free e2-micro, scale-to-zero GKE) have otherwise stuck to. The
-  diagram's ~$11–13/mo estimate assumes three separate always-on pods;
-  merging them lowers that further, though by how much needs a proper
-  Autopilot pricing pass before committing to a number.
+- Not free: Pub/Sub plus the merged pod move this off the ~$0 footprint the
+  current architecture and the rest of this project's infra (always-free
+  e2-micro, scale-to-zero GKE) have otherwise stuck to. See "Cost
+  breakdown" below.
 - This event-driven shape is also the natural precursor to the FIX API
   future-consideration noted below — if that migration happens, it would
   build on this architecture rather than the current single-pod one.
+
+**Cost breakdown:**
+
+The diagram's ~$11–13/mo estimate assumed the merged pod runs 24/7
+("always-on") with only the 5 consumers scaling to zero. Putting *all six*
+pods on the same market-hours schedule `trading-strategy` already uses
+today changes that substantially.
+
+Pricing basis: GKE Autopilot in `us-central1` (regular compute class)
+charges ~$0.0445/vCPU-hr and ~$0.0049/GiB-hr, with no charge while a pod is
+scaled to 0; the cluster's $0.10/hr management fee isn't incremental since
+it's already covered on the existing `trading-cluster`.
+
+| Pod | CPU / Mem request (estimate — not yet built) | $/hr |
+|---|---|---|
+| Merged (strategy + market data + REST) | 500m / 1Gi | $0.027 |
+| Order state | 100m / 256Mi | $0.006 |
+| Portfolio | 100m / 256Mi | $0.006 |
+| Risk | 100m / 256Mi | $0.006 |
+| Notify | 50m / 128Mi | $0.003 |
+| Bar store | 100m / 256Mi | $0.006 |
+| **Combined, all 6 pods** | | **~$0.053/hr** |
+
+| Schedule | Hours/month | Compute cost |
+|---|---|---|
+| 24/7 (diagram's original assumption) | ~730 | ~$38–39/mo |
+| Market-hours only, Mon–Fri 9am–5pm ET (all 6 pods) | ~174 | **~$9/mo** |
+
+Scheduling everything — not just the 5 consumers — cuts compute cost by
+~75%. Mechanically this just means extending the existing Cloud Scheduler +
+on/off/schedule GitHub Actions pattern to patch all 6 Deployments instead
+of 1; no new infrastructure pattern is needed.
+
+Plus the non-compute pieces:
+
+- **Pub/Sub** — first 10 GiB/month of throughput is free, then $40/TiB.
+  At this project's scale (order events + a handful of symbols' bars
+  during an 8-hour window) this should stay inside the free tier (~$0),
+  but message volume can't be pinned down until it's built — tick-level
+  market data across many symbols could push it over.
+- **Cloud Storage** (FIX logs/backups) — negligible at this scale, ~$0–1/mo.
+
+**Total: roughly $9–11/month** with everything on the market-hours
+schedule — under the diagram's original $11–13/mo (which assumed 24/7 for
+the always-on pods) and about a quarter of the fully-always-on 6-pod cost.
+Pod sizing above is an estimate, not measured — actual CPU/memory needs
+could shift this ±30–40% once the strategy/consumer code exists.
 
 ## 3. Tech Stack
 
