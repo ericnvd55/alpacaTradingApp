@@ -45,6 +45,11 @@
                 <artifactId>trading-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.trading</groupId>
+                <artifactId>trading-market-data</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

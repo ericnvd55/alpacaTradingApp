@@ -4,3 +4,10 @@ gcp:
 alpaca:
   base-url: https://paper-api.alpaca.markets
   ws-url: wss://stream.data.alpaca.markets/v2/iex
+
+spring:
+  cloud:
+    gcp:
+      pubsub:
+        publisher:
+          enable-message-ordering: true

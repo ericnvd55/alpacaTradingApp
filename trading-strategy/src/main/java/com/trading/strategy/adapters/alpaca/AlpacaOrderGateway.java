@@ -3,6 +3,7 @@ package com.trading.strategy.adapters.alpaca;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.trading.core.domain.*;
+import com.trading.core.ports.EventPublisher;
 import com.trading.core.ports.OrderGateway;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -14,9 +15,11 @@ import java.time.Instant;
 public class AlpacaOrderGateway implements OrderGateway {
 
     private final RestClient restClient;
+    private final EventPublisher eventPublisher;
 
-    public AlpacaOrderGateway(RestClient alpacaRestClient) {
+    public AlpacaOrderGateway(RestClient alpacaRestClient, EventPublisher eventPublisher) {
         this.restClient = alpacaRestClient;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -38,7 +41,9 @@ public class AlpacaOrderGateway implements OrderGateway {
                 .retrieve()
                 .body(AlpacaOrderResponse.class);
 
-        return toOrder(resp);
+        Order order = toOrder(resp);
+        publishIfFilled(order);
+        return order;
     }
 
     @Override
@@ -47,7 +52,9 @@ public class AlpacaOrderGateway implements OrderGateway {
                 .uri("/v2/orders:by_client_order_id?client_order_id={id}", clientOrderId)
                 .retrieve()
                 .body(AlpacaOrderResponse.class);
-        return toOrder(resp);
+        Order order = toOrder(resp);
+        publishIfFilled(order);
+        return order;
     }
 
     @Override
@@ -57,7 +64,24 @@ public class AlpacaOrderGateway implements OrderGateway {
                 .uri("/v2/orders/{id}", existing.brokerOrderId())
                 .retrieve()
                 .toBodilessEntity();
-        return getOrder(clientOrderId);
+        Order cancelled = getOrder(clientOrderId);
+        if (cancelled.status() == OrderStatus.CANCELED) {
+            eventPublisher.publishOrderCancelled(cancelled);
+        }
+        return cancelled;
+    }
+
+    /**
+     * Best-effort fill detection: catches fills only when this REST response
+     * happens to observe status FILLED (e.g. an immediate marketable fill, or
+     * a poll after the fact). Alpaca's authoritative fill signal is the
+     * trade_updates WebSocket stream, which this gateway doesn't subscribe to
+     * yet — until it does, fills that happen between calls are missed here.
+     */
+    private void publishIfFilled(Order order) {
+        if (order.status() == OrderStatus.FILLED) {
+            eventPublisher.publishOrderFilled(order);
+        }
     }
 
     private Order toOrder(AlpacaOrderResponse r) {

@@ -5,3 +5,6 @@ spring:
 alpaca:
   base-url: https://paper-api.alpaca.markets
   ws-url: wss://stream.data.alpaca.markets/v2/iex
+
+trading:
+  symbols: AAPL

@@ -3,6 +3,7 @@ package com.trading.strategy.adapters.alpaca;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.trading.core.domain.*;
+import com.trading.core.ports.EventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -12,11 +13,13 @@ import java.math.BigDecimal;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 @WireMockTest
 class AlpacaOrderGatewayTest {
 
     private AlpacaOrderGateway gateway;
+    private EventPublisher eventPublisher;
 
     @BeforeEach
     void setUp(WireMockRuntimeInfo wm) {
@@ -24,7 +27,8 @@ class AlpacaOrderGatewayTest {
                 .baseUrl(wm.getHttpBaseUrl())
                 .requestFactory(new SimpleClientHttpRequestFactory())
                 .build();
-        gateway = new AlpacaOrderGateway(client);
+        eventPublisher = mock(EventPublisher.class);
+        gateway = new AlpacaOrderGateway(client, eventPublisher);
     }
 
     @Test
@@ -132,5 +136,6 @@ class AlpacaOrderGatewayTest {
 
         verify(deleteRequestedFor(urlEqualTo("/v2/orders/broker-id-123")));
         assertThat(order.status()).isEqualTo(OrderStatus.CANCELED);
+        org.mockito.Mockito.verify(eventPublisher).publishOrderCancelled(order);
     }
 }
